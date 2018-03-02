@@ -18,7 +18,7 @@ async def on_ready():
 	print('Use this link to invite {}:'.format(client.user.name))
 	print('https://discordapp.com/oauth2/authorize?client_id={}&scope=bot&permissions=8'.format(client.user.id))
 	print('--------')
-
+	client.load_extension("ProfileCog")
 
 # This is a basic example of a call and response command. You tell it do "this" and it does it.
 @client.command(pass_context=True)
@@ -47,6 +47,6 @@ async def fingergunsback(ctx, member:discord.Member):
 		print ("deleted message")
 	except Exception:
 		await client.say('I do not have permission to delete the message.')
-		
+	
 client.run("NDE4ODk4ODc2MTU4NzA1NjY3.DXoRog.Zf1mfmKndvxrUKwI-wSbaSF3OWk")
 
