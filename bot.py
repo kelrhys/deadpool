@@ -28,8 +28,8 @@ async def ping(ctx):
 
 @client.command(aliases=["fg", "fingergun"], pass_context=True)
 async def fingerguns(ctx, member:discord.Member):
-	await client.say('<@!{}> :point_right: :point_right: <@!{}>'.format(ctx.message.author.id, member.id))
-	print ("sent point_right from <@!{}> to <@!{}>".format(ctx.message.author.id, member.id))
+	await client.say('{0.mention} :point_right: :point_right: {1.mention}'.format(ctx.message.author, member))
+	print ("sent point_right from {} to {}".format(ctx.message.author, member))
 
 	try:
 		await client.delete_message(ctx.message)
@@ -39,9 +39,9 @@ async def fingerguns(ctx, member:discord.Member):
 
 @client.command(aliases=["fgback", "fingergunback"], pass_context=True)
 async def fingergunsback(ctx, member:discord.Member):
-	await client.say('<@!{}> :point_left: :point_left: <@!{}>'.format(ctx.message.author.id, member.id))
-	print ("sent point_left from <@!{}> to <@!{}>".format(ctx.message.author.id, member.id))
-
+	await client.say('{0.mention} :point_left: :point_left: {1.mention}'.format(ctx.message.author, member))
+	print ("sent point_left from {} to {}".format(ctx.message.author, member))
+	
 	try:
 		await client.delete_message(ctx.message)
 		print ("deleted message")
