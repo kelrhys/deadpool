@@ -68,6 +68,7 @@ class ProfileCog:
 #			await self.bot.send_message(message.channel, '{0.mention} sent message'.format(member))
 #		await self.bot.process_commands(message)
 
+	
 	async def setupNewProfile(self, member:discord.Member):
 		newProfile = {}
 		newProfile["Name"] = member.name
@@ -77,30 +78,24 @@ class ProfileCog:
 		newProfile["Server"] = member.server.name
 		newProfile["ServerID"] = member.server.id
 		
+		def setProfileKey(msg, key):
+			if msg is None:
+				newProfile[key] = "no response"
+			else:
+				newProfile[key] = msg.content
+				
 		await self.bot.send_message(member, 'Please state your current role within this organization.')
 		role = await self.bot.wait_for_message(timeout=20, author=member)
-		if role is None:
-			newProfile["Role"] = "no response"
-		else:
-			newProfile["Role"] = role.content
+		setProfileKey(role, "Role")
 		await self.bot.send_message(member, 'Very well, you have been assigned the {} role. What is your geographical timezone?'.format(newProfile["Role"]))
 		timezone = await self.bot.wait_for_message(timeout=20,author=member)
-		if timezone is None:
-			newProfile["Timezone"] = "no response"
-		else:
-			newProfile["Timezone"] = timezone.content
+		setProfileKey(timezone,"Timezone")
 		await self.bot.send_message(member, 'I have set your Timezone to {}. What is your might/level/rank in the game?'.format(newProfile["Timezone"]))
 		rank = await self.bot.wait_for_message(timeout=20,author=member)
-		if rank is None:
-			newProfile["Rank"] = "no response"
-		else:
-			newProfile["Rank"] = rank.content
+		setProfileKey(rank,"Rank")
 		await self.bot.send_message(member, 'Great, I have set your Rank to {}. Finally, as what gender would you prefer to be known?'.format(newProfile["Rank"]))
 		gender = await self.bot.wait_for_message(timeout=20,author=member)
-		if gender is None:
-			newProfile["Gender"] = "no response"
-		else:
-			newProfile["Gender"] = gender.content
+		setProfileKey(gender,"Gender")
 		await self.bot.send_message(member, 'Your gender has been set to {}. The Inquisition is over!'.format(newProfile["Gender"]))
 
 		self.theProfiles[member] = newProfile
