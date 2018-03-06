@@ -9,6 +9,8 @@ import platform
 client = commands.Bot(description="Custom profile creation and lookup", command_prefix="d/", pm_help = False)
 
 # This is what happens every time the bot launches. 
+# Permissions needed: Manage Roles, Manage Messages
+# https://discordapi.com/permissions.html
 @client.event
 async def on_ready():
 	print('Logged in as '+client.user.name+' (ID:'+client.user.id+') | Connected to '+str(len(client.servers))+' servers | Connected to '+str(len(set(client.get_all_members())))+' users')
@@ -16,7 +18,7 @@ async def on_ready():
 	print('Current Discord.py Version: {} | Current Python Version: {}'.format(discord.__version__, platform.python_version()))
 	print('--------')
 	print('Use this link to invite {}:'.format(client.user.name))
-	print('https://discordapp.com/oauth2/authorize?client_id={}&scope=bot&permissions=0x2000'.format(client.user.id))
+	print('https://discordapp.com/oauth2/authorize?client_id={}&scope=bot&permissions=268443648'.format(client.user.id))
 	print('--------')
 	client.load_extension("ProfileCog")
 
@@ -47,6 +49,7 @@ async def fingergunsback(ctx, member:discord.Member):
 		print ("deleted message")
 	except Exception:
 		await client.say('I do not have permission to delete the message.')
-	
+
+# client.run must be last, as it initiates the loop to listen for incoming requests from server		
 client.run("NDE4ODk4ODc2MTU4NzA1NjY3.DXoRog.Zf1mfmKndvxrUKwI-wSbaSF3OWk")
 
