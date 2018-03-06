@@ -7,37 +7,45 @@ class ProfileCog:
 		self.theProfiles = {}
 		self.adminSettings = {}    
 				
-	async def showProfile(self, primarykey:discord.Member):
+	async def showProfile(self, aProfile, primarykey:discord.Member):
 		em = discord.Embed(title="", colour=discord.Colour.blue())
 		em.set_author(name=primarykey, icon_url=primarykey.avatar_url)
-		for key,val in self.theProfiles[primarykey].items():
+		for key,val in aProfile.items():
 			print("{}: {}".format(key, val))
 			em.add_field(name=key, value=val)
 		await self.bot.say(embed=em)
 	
-	async def showProfiles(self):
+	async def showProfiles(self, server_id):
 		em = discord.Embed(title="All Profiles", colour=discord.Colour.green())
 		await self.bot.say(embed=em)
-		for key in self.theProfiles:
+		for key in self.theProfiles[server_id]:
 			print("{}".format(key))
-			await self.showProfile(key)
-		
-	@commands.command(pass_context=True)
-	async def hello(self, ctx):
-		await self.bot.say("Hello")
+			await self.showProfile(self.theProfiles[server_id][key], key)
+
+	def checkIsValidChannel(self, message):
+		print("checkIsValidChannel: ", not message.channel.is_private)
+		return not message.channel.is_private
 		
 	@commands.command(pass_context=True)
 	async def profiles(self, ctx):
-		# Display all profiles
-		await self.showProfiles()
+		# Display all profiles for server
+		server_id = ctx.message.author.server.id
+		await self.showProfiles(server_id)
 
 	@commands.group(pass_context=True)
 	async def profile(self, ctx):
 		if ctx.invoked_subcommand is None:
-			print("profile with no subcommand, display profile for: {}".format(ctx.message.author))
+			key = ctx.message.author
+			if not self.checkIsValidChannel(ctx.message):
+				await self.bot.send_message(key, 'Profile commands cannot be invoked from DM; please try again on a server channel.')
+				return
+				
+			print("profile with no subcommand, display profile for: {}".format(key))
 
+			server_id = key.server.id
+			
 			# Display my own profile
-			await self.showProfile(ctx.message.author)
+			await self.showProfile(self.theProfiles[server_id][key], key)
 
 	@profile.command(pass_context=True, name="create")
 	async def profile_create(self, ctx, member:discord.Member):
@@ -47,15 +55,15 @@ class ProfileCog:
 		newProfile["Nickname"] = member.nick
 		newProfile["Gender"] = "unknown"
 		newProfile["Timezone"] = "unknown"
-		newProfile["Rank"] = "unknown"
 		newProfile["Role"] = member.top_role
 		newProfile["IsAdmin"] = member.top_role.permissions.administrator
 		newProfile["Server"] = member.server.name
 		newProfile["ServerID"] = member.server.id
-		self.theProfiles[member] = newProfile
+		self.theProfiles[member.server.id][member] = newProfile
 
 	async def showSettings(self, dict, server):
-		em = discord.Embed(title="{} Configuration Settings".format(server.name), colour=discord.Colour.blue())
+		em = discord.Embed(title="", colour=discord.Colour.blue())
+		em.set_author(name="{} Configuration Settings".format(server.name), icon_url=server.icon_url)
 		for key,val in dict.items():
 			print("{}: {}".format(key, val))
 			em.add_field(name=key, value=val)
@@ -82,7 +90,7 @@ class ProfileCog:
 		server = ctx.message.author.server
 		server_id = server.id
 		
-		await self.bot.send_message(admin, 'Verified Administrator status, commencing creation of organization configuration settings. Please note that the current settings will be overwritten. Type yes to continue, or no to cancel.')
+		await self.bot.send_message(admin, 'Verified Administrator status for {}. Please note that the current settings will be overwritten. Type no to cancel, or yes to continue.'.format(server))
 		response = await self.bot.wait_for_message(timeout=20, author=admin)
 		if response is None or "no" in response.content.lower():
 			return
@@ -116,6 +124,7 @@ class ProfileCog:
 		helpContact = await self.bot.wait_for_message(timeout=20,author=admin)
 		setKey(helpContact,"HelpContact")
 		await self.bot.send_message(admin, 'HelpContact has been set to {}. Configuration complete!'.format(serverSettings["HelpContact"]))
+		await self.bot.send_message(admin, 'Please note that bot commands will not work in this DM, only on server channels')
 		
 	@commands.command(pass_context=True)
 	async def debugShowProfiles(self):
@@ -124,14 +133,6 @@ class ProfileCog:
 			for skey, val in self.theProfiles[key].items():
 				print("{}: {}".format(skey, val))
 
-# Get duplicate commands when this is enabled.				
-#	async def on_message(self, message):
-#		if message.content.startswith('d/test'):
-#			member = message.author
-#			await self.bot.send_message(message.channel, '{0.mention} sent message'.format(member))
-#		await self.bot.process_commands(message)
-
-	
 	async def setupNewProfile(self, member:discord.Member):
 		server = member.server
 		server_id = member.server.id
@@ -154,10 +155,11 @@ class ProfileCog:
 		await self.bot.send_message(member, 'Let\'s get you setup with the {}! First, what is your geographical timezone?'.format(serverSettings["OrgType"]))
 		timezone = await self.bot.wait_for_message(timeout=20,author=member)
 		setProfileKey(timezone,"Timezone")
-		await self.bot.send_message(member, 'I have set your Timezone to {}. What is your current {} in the game?'.format(newProfile["Timezone"], serverSettings["RankType"]))
+		rankType = serverSettings["RankType"]
+		await self.bot.send_message(member, 'I have set your Timezone to {}. What is your current {} in the game?'.format(newProfile["Timezone"], rankType))
 		rank = await self.bot.wait_for_message(timeout=20,author=member)
-		setProfileKey(rank,"Rank")
-		await self.bot.send_message(member, 'Great, I have set your Rank to {}. Finally, as what gender would you prefer to be known?'.format(newProfile["Rank"]))
+		setProfileKey(rank,rankType)
+		await self.bot.send_message(member, 'Great, I have set your {} to {}. Finally, as what gender would you prefer to be known?'.format(rankType, newProfile[rankType]))
 		gender = await self.bot.wait_for_message(timeout=20,author=member)
 		setProfileKey(gender,"Gender")
 		await self.bot.send_message(member, 'Your gender has been set to {}. The Inquisition is over!'.format(newProfile["Gender"]))
@@ -166,12 +168,18 @@ class ProfileCog:
 		if role is None:
 			await self.bot.send_message(member, 'Could not set your Discord Role to {} because it does not exist. Contact {} for help setting your role.'.format(serverSettings["DefaultRole"], serverSettings["HelpContact"]))
 		else:
+			#TBD: Should add error handling here, it can fail, causing profile set to fail. Bot-specific role
+			# must be above role added to members in role hierarchy 
 			await self.bot.add_roles(member, role)
 			newProfile["Role"] = serverSettings["DefaultRole"]
 
 			await self.bot.send_message(member, 'I have set your Discord Role to {} according to the {}\'s leaders.'.format(newProfile["Role"], serverSettings["OrgType"]))
 
-		self.theProfiles[member] = newProfile
+		# Initialize profile dictionary for server_id if it does not already exist
+		if server_id not in self.theProfiles:
+			self.theProfiles[server_id] = {}
+		self.theProfiles[server_id][member] = newProfile
+		await self.bot.send_message(member, 'Note that bot commands will not work in this DM, only on server channels')
 		await self.bot.send_message(member, 'Please read channel {} for help getting started. Good luck, my friend!'.format(serverSettings["HelpChannel"]))
 		
 	async def on_message(self, message):
