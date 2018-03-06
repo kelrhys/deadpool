@@ -105,7 +105,10 @@ class ProfileCog:
 		await self.bot.send_message(admin, 'I have set your OrgType to {}. What is the default Role for new members?'.format(serverSettings["OrgType"]))
 		role = await self.bot.wait_for_message(timeout=20,author=admin)
 		setKey(role,"DefaultRole")
-		await self.bot.send_message(admin, 'Great, I have set the default role for new members to {}. What channel should new users be referred to for help getting started?'.format(serverSettings["DefaultRole"]))
+		await self.bot.send_message(admin, 'Great, I have set the default role for new members to {}. What rank type information should I collect (eg. might/level/rank?)'.format(serverSettings["DefaultRole"]))
+		rankType = await self.bot.wait_for_message(timeout=20,author=admin)
+		setKey(rankType,"RankType")
+		await self.bot.send_message(admin, 'I will ask new members for their {}. What channel should they be referred to for help getting started?'.format(serverSettings["RankType"]))
 		channel = await self.bot.wait_for_message(timeout=20,author=admin)
 		setKey(channel,"HelpChannel")
 		await self.bot.send_message(admin, 'HelpChannel has been set to {}.'.format(serverSettings["HelpChannel"]))
@@ -137,7 +140,7 @@ class ProfileCog:
 		newProfile = {}
 		newProfile["Name"] = member.name
 		newProfile["Nickname"] = member.nick
-		newProfile["role"] = member.top_role
+		newProfile["Role"] = member.top_role
 		newProfile["IsAdmin"] = member.top_role.permissions.administrator
 		newProfile["Server"] = server.name
 		newProfile["ServerID"] = server_id
@@ -151,7 +154,7 @@ class ProfileCog:
 		await self.bot.send_message(member, 'Let\'s get you setup with the {}! First, what is your geographical timezone?'.format(serverSettings["OrgType"]))
 		timezone = await self.bot.wait_for_message(timeout=20,author=member)
 		setProfileKey(timezone,"Timezone")
-		await self.bot.send_message(member, 'I have set your Timezone to {}. What is your current might/level/rank in the game?'.format(newProfile["Timezone"]))
+		await self.bot.send_message(member, 'I have set your Timezone to {}. What is your current {} in the game?'.format(newProfile["Timezone"], serverSettings["RankType"]))
 		rank = await self.bot.wait_for_message(timeout=20,author=member)
 		setProfileKey(rank,"Rank")
 		await self.bot.send_message(member, 'Great, I have set your Rank to {}. Finally, as what gender would you prefer to be known?'.format(newProfile["Rank"]))
