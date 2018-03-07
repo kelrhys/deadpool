@@ -1,12 +1,50 @@
 import discord
 from discord.ext import commands
+import json
+import os
+import uuid
 
 class ProfileCog:
 	def __init__(self, bot):
 		self.bot = bot
-		self.theProfiles = {}
-		self.adminSettings = {}    
-				
+		self.folder = "data"
+		self.encoder = "None"
+		if self.folder:
+			self.folder += "/"
+			os.makedirs(self.folder, exist_ok=True)
+		self.loadSettings("settings")
+		self.loadProfiles("theProfiles")
+		
+	def loadSettings(self, filename):
+		try:
+			with open(self.folder+filename, 'r') as f:
+				self.adminSettings = json.load(f)
+		except FileNotFoundError:
+			self.adminSettings = {}
+
+	def saveSettings(self, filename):
+		with open(self.folder+filename, 'w') as tmp:
+			json.dump(self.adminSettings, tmp, ensure_ascii=True, separators=(',', ':'))
+			
+	def loadProfiles(self, filename):
+		try:
+			with open(self.folder+filename, 'r') as f:
+				self.theProfiles = json.load(f)
+		except FileNotFoundError:
+			self.theProfiles = {}
+
+	def saveProfiles(self, filename):
+		with open(self.folder+filename, 'w') as tmp:
+			json.dump(self.theProfiles, tmp, ensure_ascii=True, separators=(',', ':'))
+		
+	async def showSettings(self, dict, server):
+		em = discord.Embed(title="", colour=discord.Colour.blue())
+		em.set_author(name="{} Configuration Settings".format(server.name), icon_url=server.icon_url)
+		for key,val in dict.items():
+			print("{}: {}".format(key, val))
+			em.add_field(name=key, value=val)
+		await self.bot.say(embed=em)
+		
 	async def showProfile(self, aProfile, primarykey:discord.Member):
 		em = discord.Embed(title="", colour=discord.Colour.blue())
 		em.set_author(name=primarykey, icon_url=primarykey.avatar_url)
@@ -15,12 +53,13 @@ class ProfileCog:
 			em.add_field(name=key, value=val)
 		await self.bot.say(embed=em)
 	
-	async def showProfiles(self, server_id):
+	async def showProfiles(self, server):
 		em = discord.Embed(title="All Profiles", colour=discord.Colour.green())
 		await self.bot.say(embed=em)
-		for key in self.theProfiles[server_id]:
+		for key in self.theProfiles[server.id]:
 			print("{}".format(key))
-			await self.showProfile(self.theProfiles[server_id][key], key)
+			member = discord.utils.find(lambda m: m.id == key, server.members)
+			await self.showProfile(self.theProfiles[server.id][key], member)
 
 	def checkIsValidChannel(self, message):
 		print("checkIsValidChannel: ", not message.channel.is_private)
@@ -29,8 +68,8 @@ class ProfileCog:
 	@commands.command(pass_context=True)
 	async def profiles(self, ctx):
 		# Display all profiles for server
-		server_id = ctx.message.author.server.id
-		await self.showProfiles(server_id)
+		server = ctx.message.author.server
+		await self.showProfiles(server)
 
 	@commands.group(pass_context=True)
 	async def profile(self, ctx):
@@ -45,7 +84,7 @@ class ProfileCog:
 			server_id = key.server.id
 			
 			# Display my own profile
-			await self.showProfile(self.theProfiles[server_id][key], key)
+			await self.showProfile(self.theProfiles[server_id][key.id], key)
 
 	@profile.command(pass_context=True, name="create")
 	async def profile_create(self, ctx, member:discord.Member):
@@ -55,19 +94,17 @@ class ProfileCog:
 		newProfile["Nickname"] = member.nick
 		newProfile["Gender"] = "unknown"
 		newProfile["Timezone"] = "unknown"
-		newProfile["Role"] = member.top_role
+		newProfile["Role"] = member.top_role.name
 		newProfile["IsAdmin"] = member.top_role.permissions.administrator
 		newProfile["Server"] = member.server.name
 		newProfile["ServerID"] = member.server.id
-		self.theProfiles[member.server.id][member] = newProfile
-
-	async def showSettings(self, dict, server):
-		em = discord.Embed(title="", colour=discord.Colour.blue())
-		em.set_author(name="{} Configuration Settings".format(server.name), icon_url=server.icon_url)
-		for key,val in dict.items():
-			print("{}: {}".format(key, val))
-			em.add_field(name=key, value=val)
-		await self.bot.say(embed=em)
+		
+		if member.server.id not in self.theProfiles:
+			self.theProfiles[member.server.id] = {}
+		
+		self.theProfiles[member.server.id][member.id] = newProfile
+		
+		self.saveProfiles("theProfiles")
 		
 	def checkAdmin(ctx):
 		print("checkAdmin - admin: ", ctx.message.author.top_role.permissions.administrator)
@@ -125,7 +162,7 @@ class ProfileCog:
 		setKey(helpContact,"HelpContact")
 		await self.bot.send_message(admin, 'HelpContact has been set to {}. Configuration complete!'.format(serverSettings["HelpContact"]))
 		await self.bot.send_message(admin, 'Please note that bot commands will not work in this DM, only on server channels')
-		
+		self.saveSettings("adminSettings")
 	@commands.command(pass_context=True)
 	async def debugShowProfiles(self):
 		for key in self.theProfiles:
@@ -141,7 +178,7 @@ class ProfileCog:
 		newProfile = {}
 		newProfile["Name"] = member.name
 		newProfile["Nickname"] = member.nick
-		newProfile["Role"] = member.top_role
+		newProfile["Role"] = member.top_role.name
 		newProfile["IsAdmin"] = member.top_role.permissions.administrator
 		newProfile["Server"] = server.name
 		newProfile["ServerID"] = server_id
@@ -178,9 +215,10 @@ class ProfileCog:
 		# Initialize profile dictionary for server_id if it does not already exist
 		if server_id not in self.theProfiles:
 			self.theProfiles[server_id] = {}
-		self.theProfiles[server_id][member] = newProfile
+		self.theProfiles[server_id][member.id] = newProfile
 		await self.bot.send_message(member, 'Note that bot commands will not work in this DM, only on server channels')
 		await self.bot.send_message(member, 'Please read channel {} for help getting started. Good luck, my friend!'.format(serverSettings["HelpChannel"]))
+		self.saveProfiles("theProfiles")
 		
 	async def on_message(self, message):
 		if message.content.startswith('$cool'):
