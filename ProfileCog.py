@@ -86,18 +86,22 @@ class ProfileCog:
 			# Display my own profile
 			await self.showProfile(self.theProfiles[server_id][key.id], key)
 
+	def setBasicProfileFields(self, aProfile, member:discord.Member):
+		aProfile["Name"] = member.name
+		aProfile["Nickname"] = member.nick
+		aProfile["Gender"] = "unknown"
+		aProfile["Timezone"] = "unknown"
+		aProfile["Role"] = member.top_role.name
+		aProfile["IsAdmin"] = member.top_role.permissions.administrator
+		aProfile["Server"] = member.server.name
+		aProfile["ServerID"] = member.server.id
+		
 	@profile.command(pass_context=True, name="create")
 	async def profile_create(self, ctx, member:discord.Member):
 		# Currently this will overwrite any existing profile information! 
 		newProfile = {}
-		newProfile["Name"] = member.name
-		newProfile["Nickname"] = member.nick
-		newProfile["Gender"] = "unknown"
-		newProfile["Timezone"] = "unknown"
-		newProfile["Role"] = member.top_role.name
-		newProfile["IsAdmin"] = member.top_role.permissions.administrator
-		newProfile["Server"] = member.server.name
-		newProfile["ServerID"] = member.server.id
+
+		self.setBasicProfileFields(newProfile, member)
 		
 		if member.server.id not in self.theProfiles:
 			self.theProfiles[member.server.id] = {}
@@ -163,6 +167,37 @@ class ProfileCog:
 		await self.bot.send_message(admin, 'HelpContact has been set to {}. Configuration complete!'.format(serverSettings["HelpContact"]))
 		await self.bot.send_message(admin, 'Please note that bot commands will not work in this DM, only on server channels')
 		self.saveSettings("adminSettings")
+		
+	@admin.command(pass_context=True, name="pupdate")
+	async def admin_profileupdate(self, ctx):
+		server = ctx.message.author.server		
+		
+		if server.id not in self.theProfiles:
+			self.theProfiles[server.id] = {}
+		
+		for member in server.members:
+			newProfile = {}
+			self.setBasicProfileFields(newProfile, member)
+			self.theProfiles[server.id][member.id] = newProfile
+		
+		print("Number of members updated: ", len(server.members))
+		self.saveProfiles("theProfiles")
+	
+	@admin.command(pass_context=True, name="summary")
+	async def admin_summary(self, ctx):
+		server = ctx.message.author.server		
+		
+		em = discord.Embed(title="", colour=discord.Colour.purple())
+		em.set_author(name="{} Role Summary".format(server.name), icon_url=server.icon_url)
+		
+		for role in server.roles:
+			count = 0
+			for member in server.members:
+				if role in member.roles:
+					count+=1
+			em.add_field(name=role.name, value=count)
+		await self.bot.say(embed=em)
+		
 	@commands.command(pass_context=True)
 	async def debugShowProfiles(self):
 		for key in self.theProfiles:
